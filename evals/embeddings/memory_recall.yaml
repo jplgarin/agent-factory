@@ -1,0 +1,93 @@
+# Synthetic recall set for comparing embedding models (ADR 0004). Everything here is invented.
+#
+# 40 short memory facts, 20 in English and 20 in Spanish, and 40 questions. Each question has
+# one relevant fact. A quarter of the questions are English about an English fact, a quarter
+# Spanish about a Spanish fact, and half ask in one language about a fact stored in the other.
+# Several facts are deliberately close to each other (two payroll facts, two insurance facts,
+# two about grant applications) so that a model has to tell them apart.
+documents:
+  - {id: d01, lang: en, text: "The dentist is Dr. Rivers at the Parkside clinic; check-ups are every six months."}
+  - {id: d02, lang: en, text: "The accountant, Example and Partners, sends the quarterly tax summary in the first week of each quarter."}
+  - {id: d03, lang: en, text: "Rent is paid by standing order on the first day of the month."}
+  - {id: d04, lang: en, text: "The car insurance policy renews every March with Northline Insurance."}
+  - {id: d05, lang: en, text: "Alex prefers aisle seats on flights longer than three hours."}
+  - {id: d06, lang: en, text: "The gym membership is at Riverside Fitness and can be frozen for up to two months a year."}
+  - {id: d07, lang: en, text: "The home internet provider is FibreLink; the contract ends in September."}
+  - {id: d08, lang: en, text: "Alex does not eat mushrooms and chooses vegetarian dishes when travelling."}
+  - {id: d09, lang: en, text: "The landlord is Mr. Hartley; repairs are requested by email, not by phone."}
+  - {id: d10, lang: en, text: "Parcels should be left with the neighbour at number 14 when nobody is home."}
+  - {id: d11, lang: en, text: "The company's fiscal year ends on the thirty-first of March."}
+  - {id: d12, lang: en, text: "Investor updates go out on the first Monday of every month."}
+  - {id: d13, lang: en, text: "The board meets quarterly; the agenda is circulated one week before."}
+  - {id: d14, lang: en, text: "The patent attorney is Lindqvist Legal; they handle all trademark filings."}
+  - {id: d15, lang: en, text: "Payroll runs on the twenty-fifth; contractors are paid within thirty days of invoice."}
+  - {id: d16, lang: en, text: "The clinical advisor prefers video calls on Thursday afternoons."}
+  - {id: d17, lang: en, text: "Grant applications need two signatures: the founder and the finance lead."}
+  - {id: d18, lang: en, text: "Customer support requests are answered within one working day."}
+  - {id: d19, lang: en, text: "The cloud bill is reviewed in the first week of the month; an alert fires above two thousand euros."}
+  - {id: d20, lang: en, text: "Job applications are tracked in a spreadsheet that is updated every Friday."}
+  - {id: d21, lang: es, text: "El taller de confianza es Talleres Ribera; la revisión del coche se hace cada otoño."}
+  - {id: d22, lang: es, text: "La gestoría Ejemplo y Asociados presenta la declaración de la renta en mayo."}
+  - {id: d23, lang: es, text: "El recibo de la comunidad de vecinos se paga cada trimestre por domiciliación."}
+  - {id: d24, lang: es, text: "El seguro del hogar se renueva en enero con la aseguradora Mutua Norte."}
+  - {id: d25, lang: es, text: "A Alex le gusta viajar en tren siempre que el trayecto dure menos de cinco horas."}
+  - {id: d26, lang: es, text: "La biblioteca municipal presta libros durante tres semanas, con una renovación posible."}
+  - {id: d27, lang: es, text: "El contrato del móvil es con Telelínea y tiene permanencia hasta junio."}
+  - {id: d28, lang: es, text: "Alex no toma café por la tarde y prefiere las reuniones antes del mediodía."}
+  - {id: d29, lang: es, text: "La casera se llama señora Olmedo; el alquiler del trastero se paga aparte."}
+  - {id: d30, lang: es, text: "Las llaves de repuesto las guarda la vecina del segundo."}
+  - {id: d31, lang: es, text: "La empresa cierra por vacaciones la segunda quincena de agosto."}
+  - {id: d32, lang: es, text: "Las facturas de proveedores se aprueban los martes y se pagan los viernes."}
+  - {id: d33, lang: es, text: "El comité científico se reúne dos veces al año, en primavera y en otoño."}
+  - {id: d34, lang: es, text: "La abogada laboralista es Carmen Ejemplo, del despacho Ejemplo Legal."}
+  - {id: d35, lang: es, text: "Las nóminas se revisan con la gestoría antes del día veinte."}
+  - {id: d36, lang: es, text: "El socio tecnológico prefiere recibir los informes en inglés."}
+  - {id: d37, lang: es, text: "Las solicitudes de subvención se preparan con seis semanas de antelación."}
+  - {id: d38, lang: es, text: "Las incidencias de clientes se registran en el sistema de tickets, nunca por correo."}
+  - {id: d39, lang: es, text: "El presupuesto de marketing se revisa cada trimestre con la dirección financiera."}
+  - {id: d40, lang: es, text: "Las candidaturas rechazadas se archivan pasados seis meses."}
+queries:
+  # English question, English fact
+  - {lang: en, relevant: d01, text: "How often should I see the dentist?"}
+  - {lang: en, relevant: d02, text: "When does the tax summary from the accountant arrive?"}
+  - {lang: en, relevant: d05, text: "Which seat should be booked on a long-haul flight?"}
+  - {lang: en, relevant: d06, text: "Can the gym subscription be paused?"}
+  - {lang: en, relevant: d07, text: "When does the broadband contract finish?"}
+  - {lang: en, relevant: d09, text: "Who do I contact about a broken boiler in the flat?"}
+  - {lang: en, relevant: d10, text: "Where should the courier leave a delivery if I am out?"}
+  - {lang: en, relevant: d12, text: "When are the monthly updates sent to investors?"}
+  - {lang: en, relevant: d14, text: "Who files our trademarks?"}
+  - {lang: en, relevant: d18, text: "How quickly do we reply to customers?"}
+  # Spanish question, Spanish fact
+  - {lang: es, relevant: d21, text: "¿Cuándo toca pasar la revisión del coche?"}
+  - {lang: es, relevant: d22, text: "¿En qué mes se presenta la renta?"}
+  - {lang: es, relevant: d23, text: "¿Cada cuánto se paga la comunidad?"}
+  - {lang: es, relevant: d24, text: "¿Con qué compañía está el seguro de casa?"}
+  - {lang: es, relevant: d27, text: "¿Hasta cuándo dura la permanencia del teléfono?"}
+  - {lang: es, relevant: d28, text: "¿A qué hora es mejor convocar una reunión con Alex?"}
+  - {lang: es, relevant: d30, text: "¿Quién tiene una copia de las llaves?"}
+  - {lang: es, relevant: d32, text: "¿Qué día se pagan las facturas de los proveedores?"}
+  - {lang: es, relevant: d34, text: "¿Quién lleva los temas laborales?"}
+  - {lang: es, relevant: d37, text: "¿Con cuánta antelación hay que preparar una subvención?"}
+  # English question, Spanish fact
+  - {lang: en, relevant: d21, text: "When is the car serviced?"}
+  - {lang: en, relevant: d25, text: "Does Alex prefer trains for short trips?"}
+  - {lang: en, relevant: d26, text: "How long can library books be borrowed?"}
+  - {lang: en, relevant: d29, text: "Who is the landlady and how is the storage room paid?"}
+  - {lang: en, relevant: d31, text: "When is the company closed for holidays?"}
+  - {lang: en, relevant: d33, text: "How often does the scientific committee meet?"}
+  - {lang: en, relevant: d35, text: "By which day is payroll checked with the advisers?"}
+  - {lang: en, relevant: d36, text: "In which language should reports go to the technology partner?"}
+  - {lang: en, relevant: d38, text: "Where are customer issues logged?"}
+  - {lang: en, relevant: d40, text: "What happens to rejected applications?"}
+  # Spanish question, English fact
+  - {lang: es, relevant: d03, text: "¿Qué día se paga el alquiler?"}
+  - {lang: es, relevant: d04, text: "¿Cuándo se renueva el seguro del coche?"}
+  - {lang: es, relevant: d08, text: "¿Qué prefiere comer Alex cuando viaja?"}
+  - {lang: es, relevant: d11, text: "¿Cuándo termina el año fiscal de la empresa?"}
+  - {lang: es, relevant: d13, text: "¿Con qué frecuencia se reúne el consejo?"}
+  - {lang: es, relevant: d15, text: "¿Qué día se pagan las nóminas?"}
+  - {lang: es, relevant: d16, text: "¿Cuándo prefiere las videollamadas el asesor clínico?"}
+  - {lang: es, relevant: d17, text: "¿Cuántas firmas necesita una solicitud de subvención?"}
+  - {lang: es, relevant: d19, text: "¿A partir de qué importe salta la alerta de la factura de la nube?"}
+  - {lang: es, relevant: d20, text: "¿Dónde se lleva el seguimiento de las candidaturas de empleo?"}
