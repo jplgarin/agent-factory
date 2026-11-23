@@ -1,5 +1,8 @@
 # Every published port binds 127.0.0.1 (ADR 0007). tests/unit/test_compose_ports.py enforces it.
 # Paths are relative to the repository root (see compose.yaml).
+# Only postgres, db-roles and the Temporal containers receive the Postgres superuser credentials.
+# App containers log in as af_owner (db-migrate) or a space role (ADR 0002);
+# tests/unit/test_compose_credentials.py enforces it.
 name: agent-factory
 
 x-postgres-env: &postgres-env
@@ -26,7 +29,6 @@ x-app-env: &app-env
   AF_ENV: ${AF_ENV:-local}
   AF_LOG_LEVEL: ${AF_LOG_LEVEL:-INFO}
   AF_CONFIG_DIR: /config
-  AF_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/agent_factory
   AF_REDIS_URL: redis://:${REDIS_PASSWORD:?run make setup}@redis:6379/0
   AF_TEMPORAL_ADDRESS: temporal:7233
 
@@ -123,18 +125,50 @@ services:
     ports:
       - "127.0.0.1:${AF_TEMPORAL_UI_PORT:-8080}:8080"
 
+  db-roles:
+    image: pgvector/pgvector:0.8.7-pg16@sha256:484e838076e04939d27d3e176e91c86eea96236126023be8d3059761122e579f
+    restart: on-failure:3
+    depends_on:
+      postgres:
+        condition: service_healthy
+      # Runs after Temporal creates its databases, so it can revoke PUBLIC access to them too.
+      temporal-schema:
+        condition: service_completed_successfully
+    environment:
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      AF_OWNER_DB_PASSWORD: ${AF_OWNER_DB_PASSWORD:?run make env}
+      AF_PERSONAL_DB_PASSWORD: ${AF_PERSONAL_DB_PASSWORD:?run make env}
+      AF_SYNAPTION_DB_PASSWORD: ${AF_SYNAPTION_DB_PASSWORD:?run make env}
+    volumes:
+      - ./infra/postgres:/af:ro
+    entrypoint: ["/bin/sh", "/af/roles.sh"]
+
+  db-migrate:
+    <<: *app
+    restart: on-failure:3
+    command: ["af-migrate"]
+    depends_on:
+      db-roles:
+        condition: service_completed_successfully
+    environment:
+      AF_MIGRATION_DATABASE_URL: postgresql://af_owner:${AF_OWNER_DB_PASSWORD}@postgres:5432/agent_factory
+
   gateway:
     <<: *app
     command: ["af-gateway"]
     depends_on:
-      postgres:
-        condition: service_healthy
+      db-migrate:
+        condition: service_completed_successfully
       temporal:
         condition: service_healthy
     environment:
       <<: *app-env
       AF_HOST: 0.0.0.0
       AF_PORT: "8000"
+      AF_DATABASE_URL_PERSONAL: postgresql://af_personal:${AF_PERSONAL_DB_PASSWORD}@postgres:5432/agent_factory
+      AF_DATABASE_URL_SYNAPTION: postgresql://af_synaption:${AF_SYNAPTION_DB_PASSWORD}@postgres:5432/agent_factory
     ports:
       - "127.0.0.1:${AF_GATEWAY_PORT:-8000}:8000"
     healthcheck:
@@ -148,13 +182,14 @@ services:
     <<: *app
     command: ["af-worker"]
     depends_on: &worker-deps
-      postgres:
-        condition: service_healthy
+      db-migrate:
+        condition: service_completed_successfully
       temporal-namespaces:
         condition: service_completed_successfully
     environment:
       <<: *app-env
       AF_SPACE: personal
+      AF_DATABASE_URL: postgresql://af_personal:${AF_PERSONAL_DB_PASSWORD}@postgres:5432/agent_factory
     healthcheck: &worker-health
       test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8081/readyz', timeout=3)"]
       interval: 10s
@@ -169,6 +204,7 @@ services:
     environment:
       <<: *app-env
       AF_SPACE: synaption
+      AF_DATABASE_URL: postgresql://af_synaption:${AF_SYNAPTION_DB_PASSWORD}@postgres:5432/agent_factory
     healthcheck: *worker-health
 
 volumes:

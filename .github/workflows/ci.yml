@@ -24,8 +24,8 @@ jobs:
       - run: uv sync --frozen
       - run: make lint
       - run: make typecheck
+      # Includes the database tests: migrations, drift check, RLS isolation, audit chain.
       - run: make test
-      - run: make migrate
 
   gitleaks:
     name: Secret scan (full history)

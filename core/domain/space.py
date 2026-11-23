@@ -14,3 +14,8 @@ class Space(StrEnum):
     @property
     def task_queue(self) -> str:
         return f"af-{self.value}"
+
+    @property
+    def db_role(self) -> str:
+        """The Postgres login role that sees only this space's rows (ADR 0002)."""
+        return f"af_{self.value}"

@@ -5,4 +5,5 @@
 !LICENSE
 !core/
 !apps/
+!db/
 **/__pycache__

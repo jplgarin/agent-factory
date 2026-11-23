@@ -14,7 +14,7 @@ def _closed_port() -> int:
 
 
 async def test_database_check_raises_when_unreachable() -> None:
-    check = database_check(f"postgresql://u:p@127.0.0.1:{_closed_port()}/db")
+    check = database_check(f"postgresql://u:p@127.0.0.1:{_closed_port()}/db", "af_personal")
     with pytest.raises(ConnectionRefusedError):
         await check()
 

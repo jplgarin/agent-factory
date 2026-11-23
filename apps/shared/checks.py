@@ -3,16 +3,31 @@ from temporalio.client import Client
 
 from apps.shared.health import Check
 
+_ROLE_QUERY = """
+SELECT current_user AS role, r.rolsuper, r.rolbypassrls
+FROM pg_roles r WHERE r.rolname = current_user
+"""
 
-def database_check(dsn: str) -> Check:
+
+class DatabaseRoleError(RuntimeError):
+    pass
+
+
+def database_check(dsn: str, expected_role: str) -> Check:
+    """Ready only when logged in as `expected_role`, which must be subject to RLS (ADR 0002)."""
+
     async def check() -> None:
         conn = await asyncpg.connect(dsn, timeout=5)
         try:
-            await conn.fetchval("SELECT 1")
+            row = await conn.fetchrow(_ROLE_QUERY)
         except BaseException:
             conn.terminate()
             raise
         await conn.close(timeout=2)
+        if row is None or row["role"] != expected_role:
+            raise DatabaseRoleError(f"connected as the wrong role, expected {expected_role}")
+        if row["rolsuper"] or row["rolbypassrls"]:
+            raise DatabaseRoleError(f"role {expected_role} bypasses row-level security")
 
     return check
 

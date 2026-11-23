@@ -15,7 +15,7 @@ def _images() -> list[str]:
             stripped = line.strip()
             if stripped.startswith("image:"):
                 refs.append(stripped.removeprefix("image:").strip())
-            elif stripped.upper().startswith("FROM "):
+            elif path.name.startswith("Dockerfile") and stripped.upper().startswith("FROM "):
                 refs.append(stripped.split()[1])
     return refs
 
