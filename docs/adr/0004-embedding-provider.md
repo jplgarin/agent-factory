@@ -13,6 +13,26 @@ SPEC 4.4 requires embeddings behind an `EmbeddingProvider` interface, with a pro
 3. Every stored vector records `embedding_model` and `embedding_dim`. Queries only compare vectors of the configured model. Changing model means a new vector column (pgvector columns have a fixed dimension) and a resumable re-embed workflow; old vectors are dropped after the switch.
 4. The interface is `embed(texts: list[str]) -> list[list[float]]` plus `model_id` and `dim`; a deterministic fake is used in unit tests.
 
+## Amendments from M3 (2026-11-23)
+
+Measured and decided while implementing M3. The numbers and the method are in
+[docs/MEMORY.md](../MEMORY.md#model-comparison).
+
+1. **The starting model stays.** On the synthetic English and Spanish set,
+   `paraphrase-multilingual-mpnet-base-v2` ranked the right fact first in 36 of 40 questions and
+   `paraphrase-multilingual-MiniLM-L12-v2` in 31 of 40, at 1938 MB against 717 MB of peak memory
+   per process. With 40 questions the 95% intervals overlap, so the larger model is not clearly
+   better, and decision 2 keeps the smaller one. `multilingual-e5-large` was slower, larger and
+   not better across languages.
+2. **The interface has two methods**, `embed_documents(texts)` and `embed_query(text)`, instead
+   of the single `embed(texts)` of decision 4. Some models, `multilingual-e5-large` among them,
+   expect a different prefix for queries and for stored text; one method could not serve them.
+3. **The model is pinned to a commit** of its Hugging Face repository, and `model_id` includes
+   it. Decision 3 compares only vectors of the configured model; without the pin, a rebuilt image
+   could carry different files under the same name.
+4. **The build verifies the consequence below**: after downloading the model, the image build
+   loads it as the run-time user with the network switched off, and fails otherwise.
+
 ## Alternatives considered
 
 - *Hosted embeddings (for example Voyage AI or OpenAI)*: likely better quality and no local memory cost, but adds another vendor that receives text derived from personal mail, another secret, and a network dependency for memory writes. Can be added behind the same interface later; local was chosen (PLAN section 6, decision 12).
@@ -25,5 +45,5 @@ SPEC 4.4 requires embeddings behind an `EmbeddingProvider` interface, with a pro
 
 ## How it will be verified
 
-- M3 measurement table (memory, latency per batch, retrieval recall at k on the synthetic set) in the M3 PR.
-- Test that a query never compares vectors with a different `embedding_model`.
+- M3 measurement table (memory, latency per batch, retrieval recall at k on the synthetic set) in the M3 PR. Done: [docs/MEMORY.md](../MEMORY.md#model-comparison).
+- Test that a query never compares vectors with a different `embedding_model`. Done: `tests/db/test_memory.py`.
