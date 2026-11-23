@@ -12,7 +12,8 @@ env: ## Create .env from .env.example with random local passwords (never overwri
 	@test -f .env || uv run --no-project python -c "import secrets,re,pathlib; \
 	t=pathlib.Path('.env.example').read_text(); \
 	t=re.sub(r'^(POSTGRES_PASSWORD|REDIS_PASSWORD)=$$', lambda m: m.group(0)+secrets.token_urlsafe(24), t, flags=re.M); \
-	pathlib.Path('.env').write_text(t); pathlib.Path('.env').chmod(0o600); print('created .env')"
+	import os; fd=os.open('.env', os.O_WRONLY|os.O_CREAT|os.O_EXCL, 0o600); os.write(fd, t.encode()); os.close(fd); \
+	print('created .env')"
 
 lint: ## Ruff lint and format check
 	uv run ruff check .
