@@ -31,7 +31,7 @@ WHERE r.rolname IN ('af_owner', 'af_personal', 'af_synaption', 'af_retention')
 
 -- Only roles granted CONNECT below may open this database; nobody may open the others.
 SELECT format('REVOKE ALL ON DATABASE %I FROM PUBLIC', datname)
-FROM pg_database WHERE datallowconn AND NOT datistemplate
+FROM pg_database WHERE datallowconn
 \gexec
 SELECT format('GRANT CONNECT, TEMPORARY ON DATABASE %I TO af_owner', current_database())
 \gexec

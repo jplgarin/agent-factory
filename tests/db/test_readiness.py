@@ -21,6 +21,7 @@ async def test_ready_only_as_the_expected_space_role(database: Database, server:
         await database_check(superuser, SUPERUSER)()
 
 
-async def test_other_databases_are_closed_to_space_roles(database: Database) -> None:
+@pytest.mark.parametrize("other", ["postgres", "template1"])
+async def test_other_databases_are_closed_to_space_roles(database: Database, other: str) -> None:
     with pytest.raises(asyncpg.InsufficientPrivilegeError):
-        await asyncpg.connect(database.space_url(Space.PERSONAL).rsplit("/", 1)[0] + "/postgres")
+        await asyncpg.connect(database.space_url(Space.PERSONAL).rsplit("/", 1)[0] + f"/{other}")
