@@ -50,7 +50,7 @@ async def test_column_level_grants_leave_no_table_lock(database: Database) -> No
     """LOCK TABLE beyond ROW EXCLUSIVE needs a table-level UPDATE, DELETE or TRUNCATE grant."""
     conn = await database.connect(Space.SYNAPTION.db_role)
     try:
-        for table in ("tasks", "steps", "message_content"):
+        for table in ("tasks", "steps", "message_content", "memory_items", "memory_episodes"):
             with pytest.raises(asyncpg.InsufficientPrivilegeError):
                 async with conn.transaction():
                     await conn.execute(f"LOCK TABLE {table} IN SHARE MODE")
