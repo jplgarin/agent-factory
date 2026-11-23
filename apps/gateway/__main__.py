@@ -12,9 +12,10 @@ from apps.shared.settings import GatewaySettings
 async def serve(settings: GatewaySettings) -> None:
     client = await Client.connect(settings.temporal_address, lazy=True)
     checks = {
-        "database": database_check(settings.database_url.get_secret_value()),
-        "temporal": temporal_check(client),
+        f"database_{space.value}": database_check(url.get_secret_value(), space.db_role)
+        for space, url in settings.database_urls().items()
     }
+    checks["temporal"] = temporal_check(client)
     app = create_app(checks, settings.check_timeout_s)
     config = uvicorn.Config(app, host=settings.host, port=settings.port, log_config=None)
     await uvicorn.Server(config).serve()

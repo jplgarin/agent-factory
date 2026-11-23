@@ -25,7 +25,7 @@ async def run(settings: WorkerSettings) -> None:
 
     health = HealthServer(
         {
-            "database": database_check(settings.database_url.get_secret_value()),
+            "database": database_check(settings.database_url.get_secret_value(), space.db_role),
             "temporal": temporal_check(client),
             "worker": worker_running,
         },

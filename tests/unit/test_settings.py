@@ -11,6 +11,8 @@ from core.domain.space import Space
 def base_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     monkeypatch.setenv("AF_CONFIG_DIR", str(tmp_path))
     monkeypatch.setenv("AF_DATABASE_URL", "postgresql://u:hunter2@db:5432/x")
+    monkeypatch.setenv("AF_DATABASE_URL_PERSONAL", "postgresql://p:hunter2@db:5432/x")
+    monkeypatch.setenv("AF_DATABASE_URL_SYNAPTION", "postgresql://s:hunter2@db:5432/x")
     monkeypatch.setenv("AF_REDIS_URL", "redis://:hunter2@redis:6379/0")
     return tmp_path
 
@@ -47,3 +49,14 @@ def test_worker_requires_a_known_space(base_env: Path, monkeypatch: pytest.Monke
 def test_space_maps_to_its_own_namespace_and_queue() -> None:
     assert Space.PERSONAL.temporal_namespace == "af-personal"
     assert Space.SYNAPTION.task_queue == "af-synaption"
+
+
+def test_gateway_holds_one_url_per_space(base_env: Path) -> None:
+    urls = GatewaySettings().database_urls()  # pyright: ignore[reportCallIssue]
+    assert set(urls) == set(Space)
+    assert urls[Space.PERSONAL].get_secret_value().startswith("postgresql://p:")
+    assert urls[Space.SYNAPTION].get_secret_value().startswith("postgresql://s:")
+
+
+def test_space_maps_to_its_own_database_role() -> None:
+    assert [space.db_role for space in Space] == ["af_personal", "af_synaption"]

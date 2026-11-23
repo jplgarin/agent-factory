@@ -50,10 +50,13 @@ Temporal UI: http://127.0.0.1:8080.
 | --- | --- |
 | `make lint` | Ruff lint and format check |
 | `make typecheck` | Pyright, strict on `core/` |
-| `make test` | Unit tests with coverage |
+| `make test` | Unit and database tests with coverage (needs Docker) |
 | `make test-integration` | Tests against the running stack |
-| `make eval` / `make migrate` | Placeholders until M5b / M1 |
+| `make migrate` | Create or update database roles, apply migrations |
+| `make eval` | Placeholder until M5b |
 | `make stats` | Memory and CPU per container |
+
+Schema, roles and the audit chain: [docs/DATABASE.md](docs/DATABASE.md).
 
 `core/` may import only the standard library and pydantic; a unit test enforces it. Vendor code goes
 under `integrations/`, processes under `apps/`.

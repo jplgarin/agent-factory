@@ -24,7 +24,8 @@ async def test_gateway_ready() -> None:
     async with httpx.AsyncClient() as client:
         response = await client.get(f"{GATEWAY}/readyz", timeout=10)
     assert response.status_code == 200
-    assert response.json() == {"status": "ready", "checks": {"database": "ok", "temporal": "ok"}}
+    checks = {f"database_{space.value}": "ok" for space in Space} | {"temporal": "ok"}
+    assert response.json() == {"status": "ready", "checks": checks}
 
 
 @pytest.mark.parametrize("space", list(Space))
@@ -55,3 +56,27 @@ def test_rendered_compose_config_binds_loopback() -> None:
     compose = json.loads(rendered)
     assert any(s.get("ports") for s in compose["services"].values())
     assert port_violations(compose) == []
+
+
+def _env_value(key: str) -> str:
+    for line in (ROOT / ".env").read_text().splitlines():
+        if line.startswith(f"{key}="):
+            return line.split("=", 1)[1]
+    raise KeyError(key)
+
+
+def test_no_app_container_receives_the_superuser_password() -> None:
+    """ADR 0002: checked against the rendered config, so .env and override files count too."""
+    rendered = subprocess.run(
+        ["docker", "compose", "config", "--format", "json"],  # noqa: S607
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
+    services = json.loads(rendered)["services"]
+    secret = _env_value("POSTGRES_PASSWORD")
+    apps = [name for name, s in services.items() if s.get("image") == "agent-factory:dev"]
+    assert len(apps) == 4
+    leaks = [name for name in apps if secret in json.dumps(services[name])]
+    assert leaks == []

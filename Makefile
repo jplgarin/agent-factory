@@ -8,12 +8,8 @@ setup: env ## Install dependencies and git hooks, create .env
 	uv sync --frozen
 	uv run pre-commit install
 
-env: ## Create .env from .env.example with random local passwords (never overwrites)
-	@test -f .env || uv run --no-project python -c "import secrets,re,pathlib; \
-	t=pathlib.Path('.env.example').read_text(); \
-	t=re.sub(r'^(POSTGRES_PASSWORD|REDIS_PASSWORD)=$$', lambda m: m.group(0)+secrets.token_urlsafe(24), t, flags=re.M); \
-	import os; fd=os.open('.env', os.O_WRONLY|os.O_CREAT|os.O_EXCL, 0o600); os.write(fd, t.encode()); os.close(fd); \
-	print('created .env')"
+env: ## Create .env with random local passwords, or add keys new in .env.example (never overwrites)
+	@uv run --no-project python scripts/make_env.py
 
 lint: ## Ruff lint and format check
 	uv run ruff check .
@@ -22,8 +18,9 @@ lint: ## Ruff lint and format check
 typecheck: ## Pyright (strict on core/)
 	uv run pyright
 
-test: ## Unit tests with coverage
+test: ## Unit and database tests with coverage (database tests need Docker)
 	uv run pytest --cov --cov-report=term
+	uv run coverage report --include='core/*' --fail-under=90
 
 test-integration: ## Tests against the running stack (make up first)
 	uv run pytest -m integration
@@ -31,8 +28,10 @@ test-integration: ## Tests against the running stack (make up first)
 eval: ## Offline evals (the first eval set arrives in M5b)
 	@echo "No eval sets yet. The first one arrives in M5b."
 
-migrate: ## Database migrations (Alembic arrives in M1)
-	@echo "No migrations yet. Alembic arrives in M1."
+migrate: env ## Create or update database roles and apply migrations to the local stack
+	docker compose up -d --wait postgres
+	docker compose run --rm --build db-roles
+	docker compose run --rm --build db-migrate
 
 up: env ## Build and start the full stack, wait until healthy
 	docker compose up -d --build --wait
