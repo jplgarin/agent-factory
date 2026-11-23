@@ -17,6 +17,8 @@ GENERATED = (
     "AF_SYNAPTION_DB_PASSWORD",
 )
 _ASSIGNMENT = re.compile(r"^([A-Z][A-Z0-9_]*)=(.*)$")
+# Looser, for a hand-edited .env: Compose also accepts `export KEY=...` and spaces around `=`.
+_EXISTING = re.compile(r"^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=")
 
 
 def _fill(key: str, value: str) -> str:
@@ -26,7 +28,7 @@ def _fill(key: str, value: str) -> str:
 
 
 def keys(text: str) -> set[str]:
-    return {m.group(1) for line in text.splitlines() if (m := _ASSIGNMENT.match(line))}
+    return {m.group(1) for line in text.splitlines() if (m := _EXISTING.match(line))}
 
 
 def new_env(example: str) -> str:

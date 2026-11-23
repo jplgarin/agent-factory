@@ -36,3 +36,11 @@ def test_adds_only_missing_keys_and_keeps_existing_values(tmp_path: Path) -> Non
 def test_every_generated_key_is_in_the_real_example() -> None:
     example = (Path(__file__).resolve().parents[2] / ".env.example").read_text()
     assert set(GENERATED) <= keys(example)
+
+
+def test_recognises_export_and_spaced_assignments(tmp_path: Path) -> None:
+    (tmp_path / ".env.example").write_text(EXAMPLE)
+    existing = "export POSTGRES_USER=af_dev\nPOSTGRES_PASSWORD = kept\n  AF_OWNER_DB_PASSWORD=x\n"
+    (tmp_path / ".env").write_text(existing)
+    assert main(tmp_path) == ".env is up to date"
+    assert (tmp_path / ".env").read_text() == existing
