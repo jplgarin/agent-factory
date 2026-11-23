@@ -8,7 +8,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[2]
 COMPOSE_FILES = [ROOT / "compose.yaml", ROOT / "infra" / "docker-compose.yml"]
 IPV4_PREFIX = re.compile(r"^(\d{1,3}(?:\.\d{1,3}){3}):")
-LOOPBACK = {"127.0.0.1", "::1", "[::1]"}
+LOOPBACK = {"127.0.0.1"}
 
 
 def _host_ip(entry: Any) -> str | None:
@@ -16,8 +16,6 @@ def _host_ip(entry: Any) -> str | None:
     if isinstance(entry, dict):
         return entry.get("host_ip")
     text = str(entry)
-    if text.startswith("["):
-        return text[: text.index("]") + 1]
     match = IPV4_PREFIX.match(text)
     return match.group(1) if match else None
 
@@ -54,6 +52,8 @@ def test_main_compose_publishes_ports() -> None:
         "${HOST_IP:-127.0.0.1}:8080:8080",
         {"target": 8080, "published": 8080},
         {"target": 8080, "published": 8080, "host_ip": "0.0.0.0"},
+        "[::1]:8080:8080",
+        {"target": 8080, "host_ip": "::1"},
     ],
 )
 def test_checker_rejects_non_loopback(entry: Any) -> None:
@@ -62,7 +62,7 @@ def test_checker_rejects_non_loopback(entry: Any) -> None:
 
 @pytest.mark.parametrize(
     "entry",
-    ["127.0.0.1:8080:8080", "[::1]:8080:8080", {"target": 1, "host_ip": "127.0.0.1"}],
+    ["127.0.0.1:8080:8080", {"target": 1, "host_ip": "127.0.0.1"}],
 )
 def test_checker_accepts_loopback(entry: Any) -> None:
     assert port_violations({"services": {"s": {"ports": [entry]}}}) == []

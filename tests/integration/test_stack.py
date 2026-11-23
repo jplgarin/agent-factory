@@ -1,6 +1,8 @@
 """Runs against the stack started by `make up`."""
 
+import json
 import os
+import subprocess
 
 import httpx
 import pytest
@@ -10,6 +12,7 @@ from temporalio.api.workflowservice.v1 import DescribeNamespaceRequest, Describe
 from temporalio.client import Client
 
 from core.domain.space import Space
+from tests.unit.test_compose_ports import ROOT, port_violations
 
 pytestmark = pytest.mark.integration
 
@@ -38,3 +41,17 @@ async def test_space_namespace_exists_and_worker_polls(space: Space) -> None:
         )
     )
     assert response.pollers, f"no worker polling {space.task_queue}"
+
+
+def test_rendered_compose_config_binds_loopback() -> None:
+    """ADR 0007: checks the config Compose actually uses, including any override files."""
+    rendered = subprocess.run(
+        ["docker", "compose", "config", "--format", "json"],  # noqa: S607
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
+    compose = json.loads(rendered)
+    assert any(s.get("ports") for s in compose["services"].values())
+    assert port_violations(compose) == []
