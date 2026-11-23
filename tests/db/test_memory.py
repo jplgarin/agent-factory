@@ -178,7 +178,7 @@ async def test_a_query_never_compares_vectors_of_another_model(
 
 async def test_expired_and_untrusted_items_are_filtered(engines: dict[Space, AsyncEngine]) -> None:
     memory = _memory(engines, Space.SYNAPTION)
-    soon = _now() + timedelta(seconds=1)
+    soon = _now() + timedelta(hours=1)
     kept = await memory.write(_draft(Space.SYNAPTION, "Board meeting notes are in the wiki"))
     expiring = await memory.write(
         _draft(Space.SYNAPTION, "Board meeting moved to room four", expires_at=soon)
