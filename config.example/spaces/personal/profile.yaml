@@ -1,7 +1,7 @@
-# Synthetic profile for the personal space.
+# Synthetic profile for the personal space: stable facts about the person the agents work for.
 name: Alex Example
 languages: [en, es]
 timezone: Europe/Madrid
-preferences:
-  reply_tone: friendly
-  summary_length: short
+facts:
+  - Lives in Madrid and travels to Lisbon once a month.
+  - Uses the address alex.example@example.com for personal mail.

@@ -1,0 +1,6 @@
+# Synthetic preferences for the synaption (company) space.
+style:
+  reply_tone: formal
+  summary_length: short
+rules:
+  - Write to investors and partners in English.
