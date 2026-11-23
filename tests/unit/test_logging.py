@@ -20,6 +20,28 @@ def test_redacts_secret_keys_at_any_depth() -> None:
     assert out["nested"]["items"][0]["refresh_token"] == REDACTED
 
 
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Authorization: Bearer abc.def-123",
+        "key sk-ant-api03-FAKEFAKEFAKE",
+        "google ya29.a0FAKEFAKE",
+        "refresh 1//0gFAKEFAKEFAKEFAKEFAKEFAKE",
+        "jwt eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ4In0.c2lnbmF0dXJl",
+    ],
+)
+def test_redacts_token_shaped_values_under_ordinary_keys(text: str) -> None:
+    out = redact_secrets(None, "info", {"event": text, "detail": [text]})
+    assert REDACTED in out["event"]
+    assert REDACTED in out["detail"][0]
+    assert "FAKE" not in out["event"]
+
+
+def test_redacts_credentials_in_urls() -> None:
+    out = redact_secrets(None, "info", {"event": "connect postgresql://af:s3cret@db:5432/x"})
+    assert out["event"] == f"connect postgresql://{REDACTED}@db:5432/x"
+
+
 def _lines(capsys: pytest.CaptureFixture[str]) -> list[dict[str, object]]:
     return [json.loads(line) for line in capsys.readouterr().out.splitlines() if line]
 
@@ -27,7 +49,7 @@ def _lines(capsys: pytest.CaptureFixture[str]) -> list[dict[str, object]]:
 def test_structlog_and_stdlib_both_emit_json(capsys: pytest.CaptureFixture[str]) -> None:
     configure_logging("INFO", service="test", space="personal")
     structlog.get_logger("a").info("hello", password="p", count=2)
-    logging.getLogger("temporalio.test").warning("from stdlib")
+    logging.getLogger("temporalio.test").warning("from stdlib %s", "Bearer leaked-token")
     logging.getLogger("x").debug("filtered out")
     first, second = _lines(capsys)
     assert first["event"] == "hello"
@@ -36,7 +58,7 @@ def test_structlog_and_stdlib_both_emit_json(capsys: pytest.CaptureFixture[str])
     assert first["service"] == "test"
     assert first["space"] == "personal"
     assert first["level"] == "info"
-    assert second["event"] == "from stdlib"
+    assert second["event"] == f"from stdlib {REDACTED}"
     assert second["level"] == "warning"
     assert second["service"] == "test"
 

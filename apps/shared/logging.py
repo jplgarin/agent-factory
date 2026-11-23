@@ -1,4 +1,5 @@
 import logging
+import re
 import sys
 from collections.abc import Mapping
 from typing import Any
@@ -23,6 +24,20 @@ _SENSITIVE_PARTS = (
     "private_key",
 )
 
+_TOKEN_VALUE = re.compile(
+    r"(?i:\bbearer\s+)[A-Za-z0-9._~+/=-]+"
+    r"|\bsk-ant-[A-Za-z0-9_-]+"
+    r"|\bya29\.[A-Za-z0-9._-]+"
+    r"|\b1//[A-Za-z0-9_-]{20,}"
+    r"|\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+"
+)
+_URL_CREDENTIALS = re.compile(r"(?<=://)[^/\s:@]+:[^/\s@]+@")
+
+
+def _scrub(text: str) -> str:
+    text = _TOKEN_VALUE.sub(REDACTED, text)
+    return _URL_CREDENTIALS.sub(f"{REDACTED}@", text)
+
 
 def _is_sensitive(key: str) -> bool:
     lowered = key.lower()
@@ -37,11 +52,13 @@ def _redact(value: Any) -> Any:
         }
     if isinstance(value, list | tuple):
         return [_redact(v) for v in value]
+    if isinstance(value, str):
+        return _scrub(value)
     return value
 
 
 def redact_secrets(_logger: WrappedLogger, _method: str, event_dict: EventDict) -> EventDict:
-    """Replace values of secret-looking keys, at any depth, before rendering."""
+    """Mask secret-looking keys and token-shaped values, at any depth, before rendering."""
     for key in list(event_dict):
         if _is_sensitive(key):
             event_dict[key] = REDACTED
