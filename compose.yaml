@@ -1,0 +1,4 @@
+# One-command local stack: `make up` (or `docker compose up -d --build --wait`).
+include:
+  - path: infra/docker-compose.yml
+    project_directory: .

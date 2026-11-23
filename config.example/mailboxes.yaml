@@ -1,0 +1,14 @@
+# Synthetic. Real addresses belong only in the private config repo.
+mailboxes:
+  - id: personal_gmail
+    space: personal
+    provider: gmail
+    address: alex.example@example.com
+  - id: personal_icloud
+    space: personal
+    provider: icloud
+    address: alex.example@example.org
+  - id: synaption_workspace
+    space: synaption
+    provider: gmail_workspace
+    address: alex@company.example

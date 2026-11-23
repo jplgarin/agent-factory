@@ -1,0 +1,175 @@
+# Every published port binds 127.0.0.1 (ADR 0007). tests/unit/test_compose_ports.py enforces it.
+# Paths are relative to the repository root (see compose.yaml).
+name: agent-factory
+
+x-postgres-env: &postgres-env
+  DB: postgres12
+  DB_PORT: "5432"
+  POSTGRES_SEEDS: postgres
+  POSTGRES_USER: ${POSTGRES_USER:?run make setup}
+  POSTGRES_PWD: ${POSTGRES_PASSWORD:?run make setup}
+
+x-app: &app
+  build:
+    context: .
+    dockerfile: infra/Dockerfile
+  image: agent-factory:dev
+  restart: unless-stopped
+  read_only: true
+  tmpfs: [/tmp]
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  volumes:
+    - ${AF_CONFIG_DIR_HOST:-./config.example}:/config:ro
+
+x-app-env: &app-env
+  AF_ENV: ${AF_ENV:-local}
+  AF_LOG_LEVEL: ${AF_LOG_LEVEL:-INFO}
+  AF_CONFIG_DIR: /config
+  AF_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/agent_factory
+  AF_REDIS_URL: redis://:${REDIS_PASSWORD:?run make setup}@redis:6379/0
+  AF_TEMPORAL_ADDRESS: temporal:7233
+
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.7-pg16@sha256:484e838076e04939d27d3e176e91c86eea96236126023be8d3059761122e579f
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: agent_factory
+    ports:
+      - "127.0.0.1:${AF_POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d agent_factory"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+
+  redis:
+    image: redis:8.8.4-alpine@sha256:1273af45b299d2b8b60d0e400d90aa6c2c5b1794f01d6a7ca60ff3ba6e65efb5
+    restart: unless-stopped
+    command: ["sh", "-c", "exec redis-server --requirepass \"$$REDIS_PASSWORD\" --save '' --appendonly no"]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDISCLI_AUTH: ${REDIS_PASSWORD}
+    ports:
+      - "127.0.0.1:${AF_REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  temporal-schema:
+    image: temporalio/admin-tools:1.32.2@sha256:4a95866efba29d7e17ab012df5232795e8b0ad0f7d5f9d1ec4df321f7792a754
+    restart: on-failure:6
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      <<: *postgres-env
+      SQL_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./infra/temporal:/af:ro
+    entrypoint: ["/bin/sh", "/af/setup-postgres.sh"]
+
+  temporal:
+    image: temporalio/server:1.32.2@sha256:7bf69188a6232fea14869b9cef3d94aa82a1601d99517f7e86c71f22da4e0670
+    restart: unless-stopped
+    depends_on:
+      temporal-schema:
+        condition: service_completed_successfully
+    environment:
+      <<: *postgres-env
+      BIND_ON_IP: 0.0.0.0
+      DYNAMIC_CONFIG_FILE_PATH: config/dynamicconfig/development-sql.yaml
+    ports:
+      - "127.0.0.1:${AF_TEMPORAL_PORT:-7233}:7233"
+    volumes:
+      - ./infra/temporal/dynamicconfig:/etc/temporal/config/dynamicconfig:ro
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "7233"]
+      interval: 5s
+      timeout: 3s
+      retries: 60
+      start_period: 20s
+
+  temporal-namespaces:
+    image: temporalio/admin-tools:1.32.2@sha256:4a95866efba29d7e17ab012df5232795e8b0ad0f7d5f9d1ec4df321f7792a754
+    restart: on-failure:6
+    depends_on:
+      temporal:
+        condition: service_healthy
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+      AF_NAMESPACES: af-personal af-synaption
+    volumes:
+      - ./infra/temporal:/af:ro
+    entrypoint: ["/bin/sh", "/af/create-namespaces.sh"]
+
+  temporal-ui:
+    image: temporalio/ui:2.58.1@sha256:ac3c13eddb4547d830991bb5eee93a5d97140134522b7297fdb2be1fe25ef925
+    restart: unless-stopped
+    depends_on:
+      temporal:
+        condition: service_healthy
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+    ports:
+      - "127.0.0.1:${AF_TEMPORAL_UI_PORT:-8080}:8080"
+
+  gateway:
+    <<: *app
+    command: ["af-gateway"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      temporal:
+        condition: service_healthy
+    environment:
+      <<: *app-env
+      AF_HOST: 0.0.0.0
+      AF_PORT: "8000"
+    ports:
+      - "127.0.0.1:${AF_GATEWAY_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8000/readyz', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  worker-personal:
+    <<: *app
+    command: ["af-worker"]
+    depends_on: &worker-deps
+      postgres:
+        condition: service_healthy
+      temporal-namespaces:
+        condition: service_completed_successfully
+    environment:
+      <<: *app-env
+      AF_SPACE: personal
+    healthcheck: &worker-health
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8081/readyz', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  worker-synaption:
+    <<: *app
+    command: ["af-worker"]
+    depends_on: *worker-deps
+    environment:
+      <<: *app-env
+      AF_SPACE: synaption
+    healthcheck: *worker-health
+
+volumes:
+  pgdata:

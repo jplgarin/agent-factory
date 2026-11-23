@@ -1,0 +1,8 @@
+# Synthetic profile for the synaption (company) space.
+name: Alex Example
+role: Founder
+languages: [en, es]
+timezone: Europe/Madrid
+preferences:
+  reply_tone: formal
+  summary_length: short
