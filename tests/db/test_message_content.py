@@ -61,3 +61,32 @@ async def test_retention_deletes_only_expired_bodies_and_never_reads_them(
         )
     }
     assert remaining == {rows["fresh"][0]}
+
+
+@pytest.mark.parametrize("offset", [timedelta(days=-40), timedelta(days=40)])
+async def test_space_roles_cannot_set_created_at(database: Database, offset: timedelta) -> None:
+    body = f"backdated {offset}".encode()
+    conn = await database.connect(Space.PERSONAL.db_role)
+    try:
+        statements = [
+            (
+                "INSERT INTO message_content (space, content_hash, content, created_at)"
+                " VALUES ('personal', sha256($1::bytea), $1::bytea, now() + $2::interval)",
+                (body, offset),
+            ),
+            (
+                "INSERT INTO tasks (id, space, origin, requested_by, agent_id, input, priority,"
+                " budget, status, created_at) VALUES (gen_random_uuid(), 'personal', 'api',"
+                " 'owner', 'email.personal', '{}', 'normal', '{}', 'pending',"
+                " now() + $1::interval)",
+                (offset,),
+            ),
+            ("UPDATE tasks SET created_at = now() + $1::interval", (offset,)),
+            ("UPDATE steps SET created_at = now() + $1::interval", (offset,)),
+        ]
+        for sql, args in statements:
+            with pytest.raises(asyncpg.PostgresError) as error:
+                await conn.execute(sql, *args)
+            assert sqlstate(error.value) == DENIED, sql
+    finally:
+        await conn.close()

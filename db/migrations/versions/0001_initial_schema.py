@@ -20,12 +20,15 @@ depends_on: str | Sequence[str] | None = None
 SPACE_ROLES = {"personal": "af_personal", "synaption": "af_synaption"}
 # Tables where each space role reads and writes only its own rows.
 SPACE_TABLES = {
-    "tasks": "SELECT, INSERT, UPDATE",
-    "runs": "SELECT, INSERT, UPDATE",
-    "steps": "SELECT, INSERT",
-    "approvals": "SELECT, INSERT, UPDATE",
-    "message_content": "SELECT, INSERT",
+    "tasks": ("SELECT", "INSERT", "UPDATE"),
+    "runs": ("SELECT", "INSERT", "UPDATE"),
+    "steps": ("SELECT", "INSERT"),
+    "approvals": ("SELECT", "INSERT", "UPDATE"),
+    "message_content": ("SELECT", "INSERT"),
 }
+# Set only by the database. created_at on message_content decides retention, so space roles get
+# INSERT and UPDATE on every column except these.
+DATABASE_SET_COLUMNS = frozenset({"created_at"})
 ENUM_TYPES = (
     "space",
     "task_origin",
@@ -81,7 +84,7 @@ $$
 -- chain has no gaps or forks. The writer cannot choose seq, occurred_at, prev_hash or hash.
 CREATE FUNCTION audit_events_chain() RETURNS trigger
 LANGUAGE plpgsql SECURITY DEFINER
-SET search_path = pg_catalog, public
+SET search_path = pg_catalog, public, pg_temp
 AS $$
 DECLARE
     head public.audit_chain_heads%ROWTYPE;
@@ -143,7 +146,20 @@ VALUES ('personal', 0, decode(repeat('00', 32), 'hex')),
 )
 
 
-def _security_statements() -> list[str]:
+def _grants(table: str, role: str, columns: list[str]) -> list[str]:
+    privileges = SPACE_TABLES[table]
+    if DATABASE_SET_COLUMNS.isdisjoint(columns):
+        return [f"GRANT {', '.join(privileges)} ON {table} TO {role}"]
+    writable = ", ".join(c for c in columns if c not in DATABASE_SET_COLUMNS)
+    return [
+        f"GRANT {privilege} ({writable}) ON {table} TO {role}"
+        if privilege in ("INSERT", "UPDATE")
+        else f"GRANT {privilege} ON {table} TO {role}"
+        for privilege in privileges
+    ]
+
+
+def _security_statements(columns: dict[str, list[str]]) -> list[str]:
     statements: list[str] = list(AUDIT_FUNCTIONS)
     tables = [*SPACE_TABLES, "audit_events", "audit_chain_heads"]
     for table in tables:
@@ -152,12 +168,12 @@ def _security_statements() -> list[str]:
         statements.append(f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY")
     for space, role in SPACE_ROLES.items():
         own = f"space = '{space}'::space"
-        for table, privileges in SPACE_TABLES.items():
+        for table in SPACE_TABLES:
             statements.append(
                 f"CREATE POLICY {table}_{space} ON {table} TO {role}"
                 f" USING ({own}) WITH CHECK ({own})"
             )
-            statements.append(f"GRANT {privileges} ON {table} TO {role}")
+            statements += _grants(table, role, columns[table])
         statements += [
             f"CREATE POLICY audit_events_{space}_select ON audit_events FOR SELECT TO {role}"
             f" USING ({own})",
@@ -185,7 +201,6 @@ def _security_statements() -> list[str]:
     return statements
 
 
-SECURITY = _security_statements()
 DROP_FUNCTIONS_AND_TYPES = [
     "DROP FUNCTION audit_events_guard()",
     "DROP FUNCTION audit_events_chain()",
@@ -417,7 +432,9 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id", name=op.f("pk_steps")),
         sa.UniqueConstraint("run_id", "step_no", name=op.f("uq_steps_run_id_step_no")),
     )
-    for statement in SECURITY:
+    inspector = sa.inspect(op.get_bind())
+    columns = {t: [c["name"] for c in inspector.get_columns(t)] for t in SPACE_TABLES}
+    for statement in _security_statements(columns):
         op.execute(statement)
 
 

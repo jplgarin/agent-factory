@@ -121,3 +121,34 @@ async def test_public_has_no_access_to_the_database(
         assert not await superuser.fetchval(
             "SELECT has_schema_privilege($1, 'public', 'CREATE')", role
         )
+
+
+async def test_space_roles_cannot_write_database_set_columns(
+    superuser: asyncpg.Connection,
+) -> None:
+    tables = await superuser.fetch(
+        "SELECT table_name FROM information_schema.columns"
+        " WHERE table_schema = 'public' AND column_name = 'created_at'"
+    )
+    assert {r["table_name"] for r in tables} >= {"tasks", "steps", "message_content"}
+    for row in tables:
+        for space in Space:
+            for privilege in ("INSERT", "UPDATE"):
+                assert not await superuser.fetchval(
+                    "SELECT has_column_privilege($1, $2, 'created_at', $3)",
+                    space.db_role,
+                    row["table_name"],
+                    privilege,
+                ), (space, row["table_name"], privilege)
+
+
+async def test_security_definer_functions_pin_search_path_with_pg_temp_last(
+    superuser: asyncpg.Connection,
+) -> None:
+    rows = await superuser.fetch(
+        "SELECT proname, proconfig FROM pg_proc"
+        " WHERE pronamespace = 'public'::regnamespace AND prosecdef"
+    )
+    assert rows
+    for row in rows:
+        assert "search_path=pg_catalog, public, pg_temp" in (row["proconfig"] or []), row
