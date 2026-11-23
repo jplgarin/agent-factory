@@ -44,6 +44,9 @@ def test_worker_requires_a_known_space(base_env: Path, monkeypatch: pytest.Monke
     monkeypatch.setenv("AF_SPACE", "synaption")
     settings = WorkerSettings()  # pyright: ignore[reportCallIssue]
     assert settings.space is Space.SYNAPTION
+    assert settings.embedding_models_dir == Path("/opt/af/models")
+    monkeypatch.setenv("AF_EMBEDDING_MODELS_DIR", "/srv/models")
+    assert WorkerSettings().embedding_models_dir == Path("/srv/models")  # pyright: ignore[reportCallIssue]
 
 
 def test_space_maps_to_its_own_namespace_and_queue() -> None:

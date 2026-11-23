@@ -30,17 +30,21 @@ class EmbeddingModel:
         return self.name.replace("/", "--")
 
 
+# Revisions are the commits measured on 2026-11-23 (ADR 0004).
 MINILM = EmbeddingModel(
     name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
     dim=384,
+    revision="faf4aa4225822f3bc6376869cb1164e8e3feedd0",
 )
 MPNET = EmbeddingModel(
     name="sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
     dim=768,
+    revision="e5d116277351513fd260955ece953ecddde7046e",
 )
 E5_LARGE = EmbeddingModel(
     name="intfloat/multilingual-e5-large",
     dim=1024,
+    revision="ac6781cd1cf88b8306a536d7c9d18a5bd57cc14b",
     # The model card asks for these prefixes; fastembed does not add them.
     query_prefix="query: ",
     document_prefix="passage: ",

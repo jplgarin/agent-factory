@@ -30,5 +30,11 @@ jobs:
         with:
           version: "0.13.7"
       - run: uv sync --frozen
+      # The model that ships: download it at its pinned revision, then load it with the network
+      # switched off, as the image build and the running containers do.
+      - run: uv run python -m integrations.embeddings.fetch download "$RUNNER_TEMP/models"
+      - run: uv run python -m integrations.embeddings.fetch check "$RUNNER_TEMP/models"
+        env:
+          HF_HUB_OFFLINE: "1"
       # The results are in the job summary and in one annotation per model.
       - run: uv run python -m scripts.embedding_benchmark
