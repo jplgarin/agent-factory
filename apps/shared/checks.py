@@ -9,8 +9,10 @@ def database_check(dsn: str) -> Check:
         conn = await asyncpg.connect(dsn, timeout=5)
         try:
             await conn.fetchval("SELECT 1")
-        finally:
-            await conn.close()
+        except BaseException:
+            conn.terminate()
+            raise
+        await conn.close(timeout=2)
 
     return check
 
