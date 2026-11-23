@@ -12,11 +12,9 @@ for db in temporal temporal_visibility; do
     temporal) dir=/etc/temporal/schema/postgresql/v12/temporal/versioned ;;
     *) dir=/etc/temporal/schema/postgresql/v12/visibility/versioned ;;
   esac
-  if tool --db "$db" create 2>/dev/null; then
-    tool --db "$db" setup-schema -v 0.0
-  else
-    echo "database $db already exists"
-  fi
+  tool --db "$db" create 2>/dev/null || echo "database $db already exists"
+  # Idempotent: skips when a schema version is already recorded, so an interrupted first run recovers.
+  tool --db "$db" setup-schema -v 0.0
   tool --db "$db" update-schema -d "$dir"
 done
 echo 'temporal schema ready'
