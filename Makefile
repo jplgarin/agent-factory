@@ -36,10 +36,10 @@ migrate: env ## Create or update database roles and apply migrations to the loca
 up: env ## Build and start the full stack, wait until healthy
 	docker compose up -d --build --wait
 
-down: ## Stop the stack (keeps volumes)
+down: env ## Stop the stack (keeps volumes)
 	docker compose down
 
-logs: ## Follow logs
+logs: env ## Follow logs
 	docker compose logs -f
 
 stats: ## Memory and CPU per container
