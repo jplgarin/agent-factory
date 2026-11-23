@@ -111,11 +111,11 @@ facts, 20 in English and 20 in Spanish, and 40 questions with one right fact eac
 questions are asked in the other language than the fact. "Top 1" counts how often the right fact
 ranked first.
 
-| Model | Dim | Files | Peak memory | Query | Top 1 | Top 3 | Top 1, same language | Top 1, other language |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `paraphrase-multilingual-MiniLM-L12-v2` (ships) | 384 | 252 MB | 717 MB | 6 ms | 31/40 | 36/40 | 17/20 | 14/20 |
-| `paraphrase-multilingual-mpnet-base-v2` | 768 | 1127 MB | 1938 MB | 21 ms | 36/40 | 40/40 | 18/20 | 18/20 |
-| `multilingual-e5-large` | 1024 | 4489 MB | 2058 MB | 73 ms | 32/40 | 37/40 | 20/20 | 12/20 |
+| Model | Dim | Files | Peak memory | One query | Batch of documents | Top 1 | Top 3 | Top 1, same language | Top 1, other language |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `paraphrase-multilingual-MiniLM-L12-v2` (ships) | 384 | 252 MB | 717 MB | 6 ms | 123 per second | 31/40 | 36/40 | 17/20 | 14/20 |
+| `paraphrase-multilingual-mpnet-base-v2` | 768 | 1127 MB | 1938 MB | 21 ms | 40 per second | 36/40 | 40/40 | 18/20 | 18/20 |
+| `multilingual-e5-large` | 1024 | 4489 MB | 2058 MB | 73 ms | 10 per second | 32/40 | 37/40 | 20/20 | 12/20 |
 
 Peak memory is the peak of one process that downloads the model, loads it and embeds the set.
 Each worker loads its own copy, so the stack pays it twice. Files is the size of the download
