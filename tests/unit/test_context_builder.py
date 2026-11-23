@@ -58,6 +58,10 @@ class Brief(BaseModel):
     constraints: tuple[str, ...] = ()
 
 
+class EmptyBrief(BaseModel):
+    pass
+
+
 class SearchInput(BaseModel):
     query: str
     limit: int = 10
@@ -469,6 +473,8 @@ def test_a_custom_token_counter_is_used_and_named() -> None:
         ({"episodes": (EPISODES[0], EPISODES[0])}, "duplicate episode"),
         ({"tools": (TOOLS[0], TOOLS[0])}, "duplicate tool"),
         ({"agent_version": "latest"}, "agent_version"),
+        ({"task_brief": {"objective": "A dict is not a typed brief."}}, "task_brief"),
+        ({"task_brief": EmptyBrief()}, "task brief has no fields"),
     ],
 )
 def test_requests_that_mix_spaces_or_repeat_entries_are_rejected(

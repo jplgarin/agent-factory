@@ -86,7 +86,8 @@ class MemoryWriter:
     async def write_item(self, draft: MemoryDraft, *, tainted: bool, now: datetime) -> MemoryItem:
         self._check_space(draft.space)
         self._check_trust(draft.trust, tainted)
-        if draft.expires_at is not None and draft.expires_at <= _aware(now):
+        now = _aware(now)
+        if draft.expires_at is not None and draft.expires_at <= now:
             raise ValueError("expires_at must be in the future")
         duplicate = await self._items.find_duplicate(
             draft, embedding_model=self._embedder.model_id, now=now

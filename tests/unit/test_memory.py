@@ -285,6 +285,8 @@ async def test_expiry_must_be_in_the_future_and_now_must_be_aware() -> None:
             now=NOW.replace(tzinfo=None),
         )
     with pytest.raises(ValueError, match="timezone-aware"):
+        await writer.write_item(_draft(), tainted=False, now=NOW.replace(tzinfo=None))
+    with pytest.raises(ValueError, match="timezone-aware"):
         await reader.search("tea", limit=1, now=NOW.replace(tzinfo=None), include_untrusted=True)
 
 

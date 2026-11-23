@@ -86,6 +86,36 @@ def test_invalid_profiles_are_rejected_without_echoing_values(
 
 
 @pytest.mark.parametrize(
+    ("profile", "preferences"),
+    [
+        ("name: Alex\nlanguages: [en]\ntimezone: MARKER\n", PREFERENCES),
+        ("name: Alex\nlanguages: [MARKER]\ntimezone: UTC\n", PREFERENCES),
+        ('name: "MARKER\\nsecond line"\nlanguages: [en]\ntimezone: UTC\n', PREFERENCES),
+        ("name: [MARKER]\nlanguages: [en]\ntimezone: UTC\n", PREFERENCES),
+        ("name: Alex\nlanguages: [en]\ntimezone: UTC\nfacts: MARKER\n", PREFERENCES),
+        (PROFILE, "style:\n  reply_tone: ' MARKER '\n"),
+        (PROFILE, "rules: MARKER\n"),
+        (PROFILE, "rules:\n  - [MARKER]\n"),
+        ("name: 'MARKER\n", PREFERENCES),
+    ],
+)
+def test_error_messages_never_contain_the_offending_value(
+    tmp_path: Path, profile: str, preferences: str
+) -> None:
+    marker = "ZZ-PRIVATE-MARKER-ZZ"
+    root = _config(
+        tmp_path,
+        profile=profile.replace("MARKER", marker),
+        preferences=preferences.replace("MARKER", marker),
+    )
+    with pytest.raises(ConfigFileError) as error:
+        load_space_config(root, Space.PERSONAL)
+    assert marker not in str(error.value)
+    assert error.value.__cause__ is None
+    assert error.value.__context__ is None or error.value.__suppress_context__
+
+
+@pytest.mark.parametrize(
     "preferences",
     [
         "style:\n  Reply Tone: formal\n",

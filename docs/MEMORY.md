@@ -165,6 +165,10 @@ inside those tags is data. Text cannot close its own fence: any `<untrusted_data
 lowers the chance that injected instructions are followed. It is not the control: the control is
 the policy engine denying tools with external effect to tainted runs (PLAN G7).
 
+The task brief is rendered as it is given and is not fenced: it carries the instructions for the
+run. A brief written by a run that had read untrusted text makes the new run tainted from the
+start. That flag travels with the delegation (G7); the builder cannot see it.
+
 ### Token estimate
 
 Budgets are counted by a `TokenCounter`. The default, `Utf8TokenEstimator`, counts one token per

@@ -16,7 +16,7 @@ from enum import StrEnum
 from typing import Self
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
+from pydantic import BaseModel, ConfigDict, Field, InstanceOf, JsonValue, model_validator
 
 from core.audit.chain import AuditEventDraft, AuditEventType, canonical_json
 from core.context.documents import FileRef, Preferences, SpaceProfile
@@ -104,7 +104,8 @@ class ContextRequest(BaseModel):
     preferences_source: FileRef
     memories: tuple[MemoryMatch, ...] = ()
     episodes: tuple[Episode, ...] = ()
-    task_brief: BaseModel
+    # A model instance, never a dict: a dict would validate into an empty model and vanish.
+    task_brief: InstanceOf[BaseModel]
     tools: tuple[ToolDefinition, ...] = ()
     budget: ContextBudget
 
@@ -113,6 +114,8 @@ class ContextRequest(BaseModel):
         _, agent_space = parse_instance_id(self.agent_id)
         if agent_space is not self.space:
             raise ValueError("agent_id must name an instance in the request's space")
+        if not type(self.task_brief).model_fields:
+            raise ValueError("task brief has no fields")
         if any(match.item.space is not self.space for match in self.memories):
             raise ValueError("memory item from another space")
         if any(episode.space is not self.space for episode in self.episodes):
