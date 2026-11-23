@@ -1,0 +1,33 @@
+from typing import Literal
+
+from pydantic import DirectoryPath, Field, SecretStr
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from core.domain.space import Space
+
+LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR"]
+
+
+class Settings(BaseSettings):
+    """Settings shared by every process. Read from AF_* environment variables."""
+
+    model_config = SettingsConfigDict(env_prefix="AF_", extra="ignore", frozen=True)
+
+    env: Literal["local", "ci", "production"] = "local"
+    log_level: LogLevel = "INFO"
+    config_dir: DirectoryPath
+    database_url: SecretStr
+    redis_url: SecretStr
+    temporal_address: str = "localhost:7233"
+    check_timeout_s: float = Field(default=2.0, gt=0, le=30)
+
+
+class GatewaySettings(Settings):
+    host: str = "127.0.0.1"
+    port: int = Field(default=8000, ge=1, le=65535)
+
+
+class WorkerSettings(Settings):
+    space: Space
+    health_host: str = "127.0.0.1"
+    health_port: int = Field(default=8081, ge=0, le=65535)

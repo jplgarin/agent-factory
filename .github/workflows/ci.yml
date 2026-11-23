@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Lint, type-check, test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
+        with:
+          version: "0.13.7"
+      - run: uv sync --frozen
+      - run: make lint
+      - run: make typecheck
+      - run: make test
+      - run: make migrate
+
+  gitleaks:
+    name: Secret scan (full history)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - run: >-
+          docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.30.1
+          git /repo --redact --verbose --exit-code 1
+
+  stack:
+    name: Docker build and stack health
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
+        with:
+          version: "0.13.7"
+      - run: make env
+      - run: docker compose config --quiet
+      - run: docker compose up -d --build --wait --wait-timeout 300
+      - run: uv sync --frozen
+      - run: make test-integration
+      - run: make stats
+      - if: failure()
+        run: docker compose ps -a && docker compose logs --no-color
+      - if: always()
+        run: docker compose down -v

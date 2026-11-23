@@ -221,3 +221,20 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Agent Factory (SPEC 2.1): secrets, tokens, private config and local data never enter this repo.
+.env*
+!.env.example
+*.pem
+*.key
+*.p12
+credentials*.json
+client_secret*.json
+token*.json
+*.token
+secrets/
+data/
+.af-data/
+# Private configuration (AF_CONFIG_DIR) lives outside the repo; these catch local copies.
+config/
+agent-factory-config/
