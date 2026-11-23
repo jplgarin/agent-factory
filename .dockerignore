@@ -6,4 +6,5 @@
 !core/
 !apps/
 !db/
+!integrations/
 **/__pycache__
