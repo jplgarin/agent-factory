@@ -17,6 +17,19 @@ schema; the design decisions are in ADR 0002 (roles, RLS) and ADR 0005 (secrets,
 All four are `NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB` and members of no other role. `PUBLIC`
 loses `CONNECT` on every database and `CREATE` on schema `public`.
 
+`af_personal` and `af_synaption` get session defaults, so a stuck or hostile session cannot hold
+or wait on locks indefinitely:
+
+| Setting | Value | Why |
+| --- | --- | --- |
+| `lock_timeout` | 5 s | A query waiting on a lock fails instead of stalling the worker. Any table lock held by the other space's role (RLS does not cover table locks) stalls this space for at most 5 s per query. |
+| `statement_timeout` | 30 s | M1 queries are single-row reads and writes; anything slower is a bug. |
+| `idle_in_transaction_session_timeout` | 60 s | Ends a session left inside an open transaction, releasing its locks. |
+
+These are defaults, not limits: a session can change them with `SET`, so a compromised worker can
+still hold a table lock for longer. Removing the table-level `UPDATE` grants that allow it (writes
+through `SECURITY DEFINER` functions instead) is decided in M4.
+
 Only `postgres`, `db-roles` and the Temporal containers receive the superuser password. Each worker
 receives only its own space's password; the gateway receives both, as two separate connection URLs.
 Readiness fails if a process is connected as any role other than the one it expects, or as a role
@@ -37,6 +50,11 @@ cannot point to a row in another space even when the writer could see both.
 | `message_content` | select, insert | Email bodies. `content_hash` must equal `sha256(content)`. |
 | `audit_events` | select, insert | Append-only for every role, including `af_owner`. |
 | `audit_chain_heads` | select | Moved only by the audit trigger. |
+
+`created_at` is set only by the database: on tables that have it, space roles get `INSERT` and
+`UPDATE` on every other column. This matters most on `message_content`, where `created_at` decides
+when retention deletes the body. Every `SECURITY DEFINER` function sets
+`search_path = pg_catalog, public, pg_temp`.
 
 `tests/db` discovers tables with a `space` column from the system catalog and fails if one lacks
 forced RLS, a policy for either space role, or an isolation seed.

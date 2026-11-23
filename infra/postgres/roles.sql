@@ -16,6 +16,14 @@ ALTER ROLE af_personal WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICAT
   NOINHERIT CONNECTION LIMIT 30 PASSWORD :'personal_password';
 ALTER ROLE af_synaption WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS
   NOINHERIT CONNECTION LIMIT 30 PASSWORD :'synaption_password';
+-- Session defaults for the space roles (docs/DATABASE.md). They bound how long a stuck or hostile
+-- session can hold or wait for locks; a session can still override them with SET.
+SELECT format('ALTER ROLE %I SET %s = %L', role, setting, value)
+FROM unnest(ARRAY['af_personal', 'af_synaption']) AS role,
+     (VALUES ('lock_timeout', '5s'),
+             ('statement_timeout', '30s'),
+             ('idle_in_transaction_session_timeout', '60s')) AS defaults (setting, value)
+\gexec
 -- Deletes expired message bodies. No login until the retention job exists (M7).
 ALTER ROLE af_retention WITH NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION
   NOBYPASSRLS NOINHERIT PASSWORD NULL;
