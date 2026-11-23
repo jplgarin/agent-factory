@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Literal
 
 from pydantic import DirectoryPath, Field, SecretStr
@@ -41,3 +42,5 @@ class WorkerSettings(Settings):
     database_url: SecretStr
     health_host: str = "127.0.0.1"
     health_port: int = Field(default=8081, ge=0, le=65535)
+    # Where the image keeps the embedding model (ADR 0004). Nothing is downloaded at run time.
+    embedding_models_dir: Path = Path("/opt/af/models")

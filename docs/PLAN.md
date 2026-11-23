@@ -174,6 +174,21 @@ One branch and PR per milestone; I stop after each for your review (SPEC 9.2). E
 | **M6** Documents and Job Tracker | Documents service and MCP server (xlsx with formula-injection guard G8 and formula evaluation G17; pdf with WeasyPrint), encrypted file storage and signed downloads (G16), tracker tables, pipeline workflow and `tracker` MCP server (G6), backfill with cost estimate and batch API, report. | Synthetic set of at least 60 emails; generated workbook validated (opens, row counts, totals recompute). |
 | **M7** Hardening | OTel, Langfuse, Sentry with redaction (G11), audit chain heads anchored outside the database (G3), restic backup and restore drill, RUNBOOK, SECURITY threat model, retention job, durability tests, final review. | Restore performed from a backup in a test environment and documented; durability test passes on GitHub runners; tampering with a chain end-to-end (rewritten as owner) is detected against the external anchor. |
 
+### Follow-ups recorded while implementing
+
+Work that belongs to a later milestone and was found while building an earlier one. Each is done
+in the milestone named.
+
+| Milestone | Follow-up | Found in |
+| --- | --- | --- |
+| M2 | Fence tool outputs with `core/untrusted.py`, the same fence the context builder uses. If M2 already has its own wrapper, keep one. | M3 |
+| M2 | Once `runs` records the tainted flag (G7), add a constraint that an episode of a tainted run is untrusted ([MEMORY.md](MEMORY.md#provenance-and-trust), known limit). | M3 |
+| M4 | Call memory and context from the activities: build `FastembedProvider` from `AF_EMBEDDING_MODELS_DIR`, build the context, append its `context_assembled` event, and taint the run when `contains_untrusted` is true. | M3 |
+| M4 | Mount only a space's own `spaces/<space>/` folder into its worker. Today the whole configuration directory is mounted into both, so the personal worker can read the synaption profile file. | M3 |
+| M4 | Remove the table-level `UPDATE` grants on `runs` and `approvals` that let a space role `LOCK TABLE` them ([DATABASE.md](DATABASE.md), roles). | M1 review |
+| M7 | Let the retention job delete expired `memory_items`. They are already ignored by every search. | M3 |
+| M7 | Measure worker memory with the embedding model loaded, on the VPS. | M3 |
+
 Credentials I will need, by milestone (placeholders only until then): Anthropic API key (M2 live smoke test, M5b live evals); Google OAuth client per space (M5a); iCloud app-specific password (M5a, ideally used only on your machine); Doppler project and a Tailscale auth key for the VPS node (first deploy, after M7). I will name the exact secret when each is needed.
 
 ---

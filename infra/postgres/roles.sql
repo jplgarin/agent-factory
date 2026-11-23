@@ -1,6 +1,7 @@
--- Agent Factory database roles (ADR 0002). Idempotent: creates missing roles and resets every
--- attribute and password on each run. Run as the bootstrap superuser against agent_factory, with
--- the passwords in the psql variables owner_password, personal_password and synaption_password.
+-- Agent Factory database roles (ADR 0002) and extensions. Idempotent: creates missing roles and
+-- resets every attribute and password on each run. Run as the bootstrap superuser against
+-- agent_factory, with the passwords in the psql variables owner_password, personal_password and
+-- synaption_password.
 \set ON_ERROR_STOP on
 
 SELECT format('CREATE ROLE %I', name)
@@ -50,3 +51,7 @@ SELECT format('GRANT CONNECT ON DATABASE %I TO af_personal, af_synaption, af_ret
 REVOKE ALL ON SCHEMA public FROM PUBLIC;
 GRANT USAGE, CREATE ON SCHEMA public TO af_owner;
 GRANT USAGE ON SCHEMA public TO af_personal, af_synaption, af_retention;
+
+-- pgvector, for the embeddings in memory_items (ADR 0004). Creating an extension needs a
+-- superuser; the migrations run as af_owner and only use it.
+CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public;

@@ -1,0 +1,7 @@
+# Synthetic preferences for the personal space: how the agents should do their work.
+style:
+  reply_tone: friendly
+  summary_length: short
+rules:
+  - Reply in the language of the sender.
+  - Never accept a calendar invitation without asking first.

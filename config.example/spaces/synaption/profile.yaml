@@ -3,6 +3,5 @@ name: Alex Example
 role: Founder
 languages: [en, es]
 timezone: Europe/Madrid
-preferences:
-  reply_tone: formal
-  summary_length: short
+facts:
+  - The company address for external mail is alex@company.example.

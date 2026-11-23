@@ -88,6 +88,35 @@ async def message_content(conn: asyncpg.Connection, space: Space) -> None:
     )
 
 
+async def memory_item(conn: asyncpg.Connection, space: Space) -> None:
+    content = f"synthetic fact {uuid.uuid4()}"
+    await conn.execute(
+        "INSERT INTO memory_items (id, space, kind, content, content_hash, source_kind,"
+        " source_ref, created_by_agent, confidence, trust, embedding, embedding_model,"
+        " embedding_dim) VALUES ($1, $2, 'fact', $3, $4, 'owner', 'seed', $5, 0.9, 'trusted',"
+        " $6::vector, 'seed-model', 384)",
+        uuid.uuid4(),
+        space.value,
+        content,
+        hashlib.sha256(content.encode()).digest(),
+        f"email.{space.value}",
+        "[" + ",".join(["0.05"] * 384) + "]",
+    )
+
+
+async def memory_episode(
+    conn: asyncpg.Connection, space: Space, run_id: uuid.UUID | None = None
+) -> None:
+    run_id = run_id or await run(conn, space)
+    await conn.execute(
+        "INSERT INTO memory_episodes (id, space, run_id, topic, summary, trust)"
+        " VALUES ($1, $2, $3, 'seed', 'synthetic summary', 'trusted')",
+        uuid.uuid4(),
+        space.value,
+        run_id,
+    )
+
+
 async def audit_event(conn: asyncpg.Connection, space: Space) -> None:
     await conn.execute(
         "INSERT INTO audit_events (space, event_type, actor, payload)"
@@ -119,6 +148,8 @@ SEEDS: dict[str, Seed] = {
     "steps": step,
     "approvals": _approval,
     "message_content": message_content,
+    "memory_items": memory_item,
+    "memory_episodes": memory_episode,
     "audit_events": audit_event,
     "audit_chain_heads": _chain_head,
 }

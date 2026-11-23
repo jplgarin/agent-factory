@@ -7,9 +7,10 @@ deterministic code validates, authorizes, audits and executes them.
 This repository is public and contains code, docs and synthetic examples only. Real configuration
 lives in a separate private repository loaded through `AF_CONFIG_DIR`.
 
-**Status:** M0 (repository, tooling, local stack). No agents yet. See [docs/PLAN.md](docs/PLAN.md)
-for the milestones and [docs/adr/](docs/adr/) for the accepted decisions. [docs/SPEC.md](docs/SPEC.md)
-is the source of truth.
+**Status:** the foundation is being built. Done so far: M0 (repository, tooling, local stack), M1
+(database, space isolation, audit chain) and M3 (memory, context builder). No agents yet. See
+[docs/PLAN.md](docs/PLAN.md) for the milestones and [docs/adr/](docs/adr/) for the accepted
+decisions. [docs/SPEC.md](docs/SPEC.md) is the source of truth.
 
 ## Architecture
 
@@ -56,7 +57,8 @@ Temporal UI: http://127.0.0.1:8080.
 | `make eval` | Placeholder until M5b |
 | `make stats` | Memory and CPU per container |
 
-Schema, roles and the audit chain: [docs/DATABASE.md](docs/DATABASE.md).
+Schema, roles and the audit chain: [docs/DATABASE.md](docs/DATABASE.md). Memory, embeddings and the
+context builder: [docs/MEMORY.md](docs/MEMORY.md).
 
 `core/` may import only the standard library and pydantic; a unit test enforces it. Vendor code goes
 under `integrations/`, processes under `apps/`.

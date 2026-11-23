@@ -117,6 +117,7 @@ async def test_references_cannot_cross_spaces(
         lambda: seeds.step(superuser, own, other_run),
         lambda: seeds.approval(superuser, own, other_task, own_run),
         lambda: seeds.approval(superuser, own, own_task, other_run),
+        lambda: seeds.memory_episode(superuser, own, other_run),
     ]
     for attempt in attempts:
         with pytest.raises(asyncpg.ForeignKeyViolationError):

@@ -1,8 +1,9 @@
 # Database
 
 PostgreSQL 16 with pgvector. Schema changes are Alembic migrations in `db/migrations/`, applied by
-the one-shot `db-migrate` container (`make migrate` or `make up`). This page describes the M1
-schema; the design decisions are in ADR 0002 (roles, RLS) and ADR 0005 (secrets, retention).
+the one-shot `db-migrate` container (`make migrate` or `make up`). This page describes the schema
+after M3; the design decisions are in ADR 0002 (roles, RLS), ADR 0004 (embeddings) and ADR 0005
+(secrets, retention). How memory is written and searched is in [MEMORY.md](MEMORY.md).
 
 ## Roles
 
@@ -16,6 +17,10 @@ schema; the design decisions are in ADR 0002 (roles, RLS) and ADR 0005 (secrets,
 `infra/postgres/roles.sql` creates the roles and resets their passwords from `.env` on every run.
 All four are `NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB` and members of no other role. `PUBLIC`
 loses `CONNECT` on every database and `CREATE` on schema `public`.
+
+The same script creates the `vector` extension (pgvector), because creating an extension needs a
+superuser and migrations run as `af_owner`. It runs before every migration, in the stack and in
+each test database.
 
 `af_personal` and `af_synaption` get session defaults, so a stuck or hostile session cannot hold
 or wait on locks indefinitely:
@@ -48,6 +53,8 @@ cannot point to a row in another space even when the writer could see both.
 | `steps` | select, insert | |
 | `approvals` | select, insert, update | |
 | `message_content` | select, insert | Email bodies. `content_hash` must equal `sha256(content)`. |
+| `memory_items` | select, insert | Facts and notes with a 384-dimension embedding. See below. |
+| `memory_episodes` | select, insert | One summary per run. The run must be in the same space. |
 | `audit_events` | select, insert | Append-only for every role, including `af_owner`. |
 | `audit_chain_heads` | select | Moved only by the audit trigger. |
 
@@ -58,6 +65,31 @@ when retention deletes the body. Every `SECURITY DEFINER` function sets
 
 `tests/db` discovers tables with a `space` column from the system catalog and fails if one lacks
 forced RLS, a policy for either space role, or an isolation seed.
+
+## Memory tables
+
+`memory_items` and `memory_episodes` are insert-only for the space roles: stored memory cannot be
+changed or deleted by a worker. The checks below repeat the rules of `core.memory`, so they hold
+even if a writer skips that code.
+
+| Check on `memory_items` | Why |
+| --- | --- |
+| `source_kind` of `email`, `web` or `document` requires `trust = 'untrusted'` | External text is never stored as trusted (SPEC 2.5). |
+| `content_hash = sha256(content)` | The hash used to find duplicates is the hash of the text. |
+| `created_by_agent` ends with the row's space | An item is written by an agent of its own space. |
+| `confidence` between 0 and 1; content of 1 to 2000 characters | |
+| `embedding_dim = vector_dims(embedding)`; the embedding is not the zero vector | Every stored vector can be compared (ADR 0004). |
+| `expires_at` is after `created_at` | |
+
+The `embedding` column is `vector(384)`, the dimension of the configured model, and each row stores
+`embedding_model`. Searches compare only rows of one model. A model with another dimension needs a
+new column and a re-embed (ADR 0004).
+
+`memory_episodes` references `runs` by `(space, run_id)` and allows one episode per run. Its topic
+is a lowercase key of at most 200 characters.
+
+Neither table has an index on the embedding: search is exact (measurements in
+[MEMORY.md](MEMORY.md#search)).
 
 ## Audit chain
 

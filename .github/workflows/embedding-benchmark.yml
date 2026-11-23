@@ -1,0 +1,40 @@
+name: Embedding benchmark
+
+# Compares the candidate embedding models of ADR 0004 on the synthetic set in evals/embeddings.
+# It downloads about 3.5 GB of model files, so it runs on demand and when the benchmark or the
+# embedding code changes, not on every push.
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - scripts/embedding_benchmark.py
+      - evals/embeddings/**
+      - integrations/embeddings/**
+      - .github/workflows/embedding-benchmark.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: embedding-benchmark-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  benchmark:
+    name: Compare embedding models
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
+        with:
+          version: "0.13.7"
+      - run: uv sync --frozen
+      # The model that ships: download it at its pinned revision, then load it with the network
+      # switched off, as the image build and the running containers do.
+      - run: uv run python -m integrations.embeddings.fetch download "$RUNNER_TEMP/models"
+      - run: uv run python -m integrations.embeddings.fetch check "$RUNNER_TEMP/models"
+        env:
+          HF_HUB_OFFLINE: "1"
+      # The results are in the job summary and in one annotation per model.
+      - run: uv run python -m scripts.embedding_benchmark
